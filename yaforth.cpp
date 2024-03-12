@@ -23,7 +23,7 @@
 
 #define _getcwd getcwd
 
-unsigned char getch()
+unsigned char _getch()
 {
     return getc(stdin);
 }
