@@ -1169,6 +1169,18 @@ state_t init()
 
 void generate_code(const char *, ram_memory& memory, registry_t& words);
 
+int intro()
+{
+    const int max_line_size = 1024;
+    char* line = (char*) alloca(max_line_size);
+    line[max_line_size - 1] = 0;
+
+        printf("Welcome to Yet Another Forth!\n");
+        char * cur_dir = _getcwd(line, max_line_size);
+        printf("Current direcory is %s\n", line);
+        printf("This is interactive mode.\nType bye and press enter to exit or\nuse Forth syntax>\n");
+        return 0;
+}
 
 int main(int argc, char * argv[])
 {
@@ -1195,8 +1207,7 @@ int main(int argc, char * argv[])
         interactive = false;
     }
     else {
-        _getcwd(line, max_line_size);
-        printf("%s\n", line);
+        intro();
         fp = stdin;
     }
 
@@ -1232,6 +1243,7 @@ int main(int argc, char * argv[])
         }
     }
 
-    generate_code((const char *) argv[1], memory, words);
+    if(!interactive)
+       generate_code((const char *) argv[1], memory, words);
     return result;
 }

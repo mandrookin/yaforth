@@ -2,3 +2,9 @@
 
 Here is some view from C++ to Forth and his name is the yaforth.
 
+```bash
+make
+make check
+```
+
+

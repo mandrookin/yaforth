@@ -32,8 +32,21 @@ all: $(OBJECTS)
 #	$(CXX) $^ $(DEBUG) -l$(XLIB) -o yaforth
 endif
 
-#check:
-#	./slagheap.exe -ansi -devops:1 lib/asm 2>&1 || (echo "Assembling test not pass $$?"; exit 1)
+TESTS:=$(shell find tests -name *.frt)
+check:
+	@echo "Iterate overt test files in ./test dicrectory"
+	@for asm_file in $(TESTS); do \
+	    echo "#########  $$asm_file ########"; \
+	    ./yaforth $$asm_file; \
+	done
+
+bold := $(shell tput bold)
+sgr0 := $(shell tput sgr0)
+
+printf-bold-1:
+	@printf 'normal text - $(bold)bold text$(sgr0)'
+
+.PHONY: printf-bold-1
 
 clean:
 	rm -f $(OBJECTS) yaforth
@@ -41,6 +54,7 @@ clean:
 #	find . -name "*.xod"  -type f -delete
 #	echo "Delete MIF and listings"
 #	find ./ -type f \( -iname \*.mif -o -iname \*.mif_dbg \) -delete
+	find ./tests -type f \( -iname \*.asm -o -iname \*.mif_dbg \) -delete
 	rm -f yaforth
 	rm -rf $(ROOTOBJ)
 
