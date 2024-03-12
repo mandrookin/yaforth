@@ -37,7 +37,7 @@ constexpr unsigned int hash(const char* s, int off = 0) {
     return !s[off] ? 5381 : (hash(s, off + 1) * 33) ^ s[off];
 }
 
-
+static bool                         interactive;
 static std::stack<word_t>           integer_stack;
 static std::stack<word_t>           return_stack;
 static std::stack<word_t>           condition_stack;
@@ -746,7 +746,7 @@ state_t check_item(std::string& item, state_t state)
             state = forth_comment;
             break;
         case hash("bye"):
-            state = error;
+            state = finish;
             break;
         default:
         {
@@ -871,7 +871,7 @@ state_t forth(const char* str)
     int status = 0;
     state_t state = neutral;
 
-    for (; state != error && state != done; )
+    for (; state != error && state != done && state != finish;)
     {
         ch = *str++;
         switch (state)
@@ -986,6 +986,9 @@ state_t forth(const char* str)
             }
             buffer += ch;
             continue;
+            
+//        case finish:
+            
 
         default:
             puts("Unknown state");
@@ -1172,6 +1175,7 @@ int main(int argc, char * argv[])
     char* line = (char*) alloca(max_line_size);
     line[max_line_size - 1] = 0;
 
+    interactive =  isatty(0);
 
     //int* ptr = return_next_instruction_pointer();
     //DWORD old;
@@ -1185,6 +1189,7 @@ int main(int argc, char * argv[])
             printf("Unable open file: %s\n", argv[1]);
             exit(-1);
         }
+        interactive = false;
     }
     else {
         _getcwd(line, max_line_size);
@@ -1194,14 +1199,18 @@ int main(int argc, char * argv[])
 
     bool wait_prefix = true;
     state_t state = neutral;
-    while (!feof(fp) && state != error && state != finish ) 
+    while (!feof(fp) && state != finish )
     {
+        if(state == error && !interactive)
+        {
+            break;
+        }
         char * ptr = fgets(line, max_line_size-1, fp);
-        if (ptr) 
+        if (ptr)
         {
             if (wait_prefix)
             {
-                if (*ptr == -17) 
+                if (*ptr == -17)
                 {
                     ptr += 3;
                 }
@@ -1209,10 +1218,11 @@ int main(int argc, char * argv[])
             }
             ++line_no;
             state = forth(ptr);
-            
         }
         if (fp == stdin) {
-            if (!integer_stack.empty())
+            if(state == error)
+                printf("Error\n");
+            else if (!integer_stack.empty())
                 printf("Ok %ld\n", integer_stack.size());
             else
                 printf("Ok\n");
