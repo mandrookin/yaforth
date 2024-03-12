@@ -9,7 +9,10 @@
 #define  _CRT_SECURE_NO_WARNINGS
 
 #include <direct.h>
+#include <io.h>
 #include <Windows.h>
+
+#define isatty _isatty
 
 #else
 
