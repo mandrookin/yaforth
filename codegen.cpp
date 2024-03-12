@@ -81,14 +81,12 @@ void generate_code(const char * src, ram_memory & memory, registry_t & words)
 
     memory.jump(0);
 
-#if 0
+#if _WIN32
     const std::chrono::time_point now{ std::chrono::system_clock::now() };
     const std::chrono::year_month_day ymd{ std::chrono::floor<std::chrono::days>(now) };
 #else
     const auto  now = std::chrono::system_clock::now();
-//    const auto    ymd = std::chrono::floor<std::chrono::days>(now);
     const std::time_t t_c = std::chrono::system_clock::to_time_t(now);
-
 #endif
 
     if(src)
