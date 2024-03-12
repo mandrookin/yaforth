@@ -50,6 +50,9 @@ static std::string                  func_name;
 static ram_memory                   memory;
 static int                          line_no;
 
+// Global internal states
+bool                                ansi_colors = false;
+
 state_t     forth(const char* str);
 uint32_t    register_word(std::string &word, word_t address);
 state_t     register_variable(std::string &word);
@@ -464,6 +467,13 @@ state_t do_until()
 
 }
 
+state_t do_again()
+{
+    word_t  a;
+    a = return_stack.top();
+    memory.jump(a);
+    return neutral;
+}
 
 state_t do_loop()
 {
@@ -1126,6 +1136,7 @@ state_t init()
 
     register_builtin("begin", do_begin, asm_beginloop);
     register_builtin("until", do_until, asm_untilloop);
+    register_builtin("again", do_again, asm_again);
 
     register_builtin(".", do_dot, asm_dot);
     register_builtin(".\"", do_print_string, asm_print_string);
@@ -1140,12 +1151,24 @@ state_t init()
 
 void show_status(state_t state)
 {
-    if (state == error)
-        printf("Error\n");
-    else if (!integer_stack.empty())
-        printf("Ok %ld\n", integer_stack.size());
+    if (ansi_colors)
+    {
+        if (state == error)
+            printf("\033[0;35m" "Error\n"  "\033[0;37m");
+        else if (!integer_stack.empty())
+            printf("Ok %ld\n", integer_stack.size());
+        else
+            printf("Ok\n");
+    }
     else
-        printf("Ok\n");
+    {
+        if (state == error)
+            printf("Error\n");
+        else if (!integer_stack.empty())
+            printf("Ok %ld\n", integer_stack.size());
+        else
+            printf("Ok\n");
+    }
 }
 
 void generate_asm_code(const char* src)

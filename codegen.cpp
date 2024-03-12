@@ -658,3 +658,10 @@ void asm_untilloop(ram_memory* mem, struct word_record* rec)
 
     loop_count--;
 }
+
+void asm_again(ram_memory* mem, struct word_record* rec)
+{
+    fprintf(OUT, "    jmp     loopbegin_%d\n", loop_count);
+    fprintf(OUT, "leave_%d:\n", loop_count);
+    loop_count--;
+}

@@ -59,6 +59,7 @@ void asm_leave(ram_memory* mem, struct word_record* rec);
 
 void asm_beginloop(ram_memory* mem, struct word_record* rec);
 void asm_untilloop(ram_memory* mem, struct word_record* rec);
+void asm_again(ram_memory* mem, struct word_record* rec);
 
 void asm_to_R(ram_memory* mem, struct word_record* rec);
 void asm_from_R(ram_memory* mem, struct word_record* rec);
