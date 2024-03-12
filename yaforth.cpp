@@ -11,6 +11,7 @@
 #include <direct.h>
 #include <io.h>
 #include <Windows.h>
+#include <conio.h>
 
 #define isatty _isatty
 
@@ -40,7 +41,6 @@ constexpr unsigned int hash(const char* s, int off = 0) {
     return !s[off] ? 5381 : (hash(s, off + 1) * 33) ^ s[off];
 }
 
-static bool                         interactive;
 static std::stack<word_t>           integer_stack;
 static std::stack<word_t>           return_stack;
 static std::stack<word_t>           condition_stack;
@@ -73,25 +73,6 @@ record_t* find_record(uint32_t h)
 #pragma region Snippets
 
 
-
-#ifdef _WIN32
-word_t getch()
-{
-    DWORD mode, cc;
-    word_t c = 0;
-    HANDLE h = GetStdHandle(STD_INPUT_HANDLE);
-
-    if (h == NULL) {
-        return 0; // console not found
-    }
-
-    GetConsoleMode(h, &mode);
-    SetConsoleMode(h, mode & ~(ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT));
-    ReadConsole(h, &c, 1, &cc, NULL);
-    SetConsoleMode(h, mode);
-    return c;
-}
-#endif
 
 state_t parse_number(std::string& number_str)
 {
@@ -421,7 +402,7 @@ state_t do_dot()
 
 state_t get_key()
 {
-    word_t ch = getch();
+    word_t ch = _getch();
     integer_stack.push(ch);
     return neutral;
 }
@@ -873,6 +854,7 @@ state_t forth(const char* str)
     std::string     buffer;
     int status = 0;
     state_t state = neutral;
+    ++line_no;
 
     for (; state != error && state != done && state != finish;)
     {
@@ -1099,10 +1081,6 @@ state_t   register_builtin(std::string name, code_ptr_t code, genetator_t genera
 
 state_t init()
 {
-#if _WIN32
-    SetConsoleOutputCP(65001);
-#endif
-
     register_builtin(":", register_function, asm_function);
     register_builtin("^push", push_value, asm_push_value);
     register_builtin("^jump", do_jump, asm_jump);
@@ -1160,90 +1138,19 @@ state_t init()
     return neutral;
 }
 
-//int * return_next_instruction_pointer()
-//{
-//    _asm {
-//        mov     eax, [ebp+4]
-//    }
-//}
-
-void generate_code(const char *, ram_memory& memory, registry_t& words);
-
-int intro()
+void show_status(state_t state)
 {
-    const int max_line_size = 1024;
-    char* line = (char*) alloca(max_line_size);
-    line[max_line_size - 1] = 0;
-
-        printf("Welcome to Yet Another Forth!\n");
-        char * cur_dir = _getcwd(line, max_line_size);
-        printf("Current direcory is %s\n", line);
-        printf("This is interactive mode.\nType bye and press enter to exit or\nuse Forth syntax>\n");
-        return 0;
+    if (state == error)
+        printf("Error\n");
+    else if (!integer_stack.empty())
+        printf("Ok %ld\n", integer_stack.size());
+    else
+        printf("Ok\n");
 }
 
-int main(int argc, char * argv[])
+void generate_asm_code(const char* src)
 {
-    const int max_line_size = 1024;
-    FILE* fp = nullptr;
-    int result = 0;
-    char* line = (char*) alloca(max_line_size);
-    line[max_line_size - 1] = 0;
-
-    interactive =  isatty(0);
-
-    //int* ptr = return_next_instruction_pointer();
-    //DWORD old;
-    //result = VirtualProtect( ptr, 4096, PAGE_EXECUTE_READWRITE, &old);
-    //*ptr = 0xfeedface;
-
-    init();
-    if (argc > 1) {
-        fp = fopen(argv[1], "rt");
-        if (!fp) {
-            printf("Unable open file: %s\n", argv[1]);
-            exit(-1);
-        }
-        interactive = false;
-    }
-    else {
-        intro();
-        fp = stdin;
-    }
-
-    bool wait_prefix = true;
-    state_t state = neutral;
-    while (!feof(fp) && state != finish )
-    {
-        if(state == error && !interactive)
-        {
-            break;
-        }
-        char * ptr = fgets(line, max_line_size-1, fp);
-        if (ptr)
-        {
-            if (wait_prefix)
-            {
-                if (*ptr == -17)
-                {
-                    ptr += 3;
-                }
-                wait_prefix = false;
-            }
-            ++line_no;
-            state = forth(ptr);
-        }
-        if (fp == stdin) {
-            if(state == error)
-                printf("Error\n");
-            else if (!integer_stack.empty())
-                printf("Ok %ld\n", integer_stack.size());
-            else
-                printf("Ok\n");
-        }
-    }
-
-    if(!interactive)
-       generate_code((const char *) argv[1], memory, words);
-    return result;
+    void generate_code(const char*, ram_memory & memory, registry_t & words);
+    generate_code(src, memory, words);
 }
+

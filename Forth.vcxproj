@@ -136,6 +136,7 @@
     <ClCompile Include="codegen.cpp" />
     <ClCompile Include="yaforth.cpp" />
     <ClCompile Include="middleware.cpp" />
+    <ClCompile Include="_main.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="yaforth.h" />

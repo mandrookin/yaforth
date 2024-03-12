@@ -81,3 +81,5 @@ record_t* find_record(uint32_t h);
 
 typedef std::map<uint32_t, record_t>    registry_t;
 
+state_t forth(const char* str);
+

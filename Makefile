@@ -7,7 +7,7 @@ else
   PLUGINS := 
 endif
 
-SRC := yaforth.cpp middleware.cpp codegen.cpp
+SRC := yaforth.cpp middleware.cpp codegen.cpp _main.cpp
 
 ROOTOBJ := obj
 OBJDIR := $(ROOTOBJ)
