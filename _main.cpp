@@ -1,6 +1,7 @@
 #include "yaforth.h"
 
 static bool                         interactive;
+static bool                         generate_assembler = false;
 
 #ifdef _WIN32
 #define  _CRT_SECURE_NO_WARNINGS
@@ -25,9 +26,13 @@ unsigned char getch()
 {
     return getc(stdin);
 }
-
+struct termios old_tio;
 
 #endif
+
+constexpr unsigned int hash(const char* s, int off = 0) {
+    return !s[off] ? 5381 : (hash(s, off + 1) * 33) ^ s[off];
+}
 
 
 state_t init();
@@ -70,39 +75,15 @@ if (wait_prefix) { \
     wait_prefix = false; \
 }
 
-
-int main(int argc, char* argv[])
+state_t read_stream(FILE * fp)
 {
     const int max_line_size = 1024;
-    FILE* fp = nullptr;
-    int result = 0;
     char* line = (char*)alloca(max_line_size);
     line[max_line_size - 1] = 0;
 
-#if _WIN32
-    SetConsoleOutputCP(65001);
-#endif
-
-    interactive = isatty(0);
-
-    init();
-
-    if (argc == 1) {
-        intro();
-        fp = stdin;
-    }
-
-    if (argc > 1) {
-        fp = fopen(argv[1], "rt");
-        if (!fp) {
-            printf("Unable open file: %s\n", argv[1]);
-            exit(-1);
-        }
-        interactive = false;
-    }
     bool wait_prefix = true;
     state_t state = neutral;
-    
+
     while (!feof(fp) && state != finish)
     {
         if (state == error && !interactive)
@@ -112,21 +93,92 @@ int main(int argc, char* argv[])
         if (ptr)
         {
             SKIP_PREFIX
-            //if (wait_prefix) {
-            //    if (*ptr == -17)
-            //        ptr += 3;
-            //    wait_prefix = false;
-            //}
-
-            state = forth(ptr);
+                state = forth(ptr);
         }
         if (fp == stdin) {
             void show_status(state_t state);
             show_status(state);
         }
     }
+    return state;
+}
 
-    if (!interactive)
-        generate_asm_code((const char*)argv[1]);
+int main(int argc, char* argv[])
+{
+    FILE* fp = nullptr;
+    int result = 0;
+    int stream_count = 0;
+    state_t state = neutral;
+    const char* generated_name = nullptr;
+            
+#if _WIN32
+    SetConsoleOutputCP(65001);
+#endif
+
+    interactive = isatty(0);
+
+#ifndef _WIN32
+    if (interactive)
+    {
+        struct new_tio;
+        tcgetattr(STDIN_FILENO, &old_tio);
+        new_tio = old_tio;
+        new_tio.c_lflag &= (~ICANON & ~ECHOE);
+        tcsetattr(STDIN_FILENO, TCSANOW, &new_tio);
+    }
+#endif
+
+    init();
+
+
+        for (int i = 1; i < argc && state == neutral; i++)
+        {
+            if (*argv[i] == '-') {
+                switch (hash(argv[i]))
+                {
+                case hash("-ansi"):
+                    ansi_colors = !ansi_colors;
+                    continue;
+                case hash("-a"):
+                    generate_assembler = !generate_assembler;
+                    continue;
+                default:
+                    fprintf(stderr, "unsupported key: %s\n", argv[i]);
+                    i = argc;
+                    continue;
+                }
+            }
+            else
+            {
+                fp = fopen(argv[i], "rt");
+                if (!fp) {
+                    printf("Unable open file: %s\n", argv[i]);
+                    exit(-1);
+                }
+                if (!generated_name)
+                    generated_name = argv[i];
+                interactive = false;
+                state = read_stream(fp);
+                fclose(fp);
+                stream_count++;
+            }
+        }
+
+        if (stream_count == 0) {
+            intro();
+            fp = stdin;
+            read_stream(fp);
+        }
+
+    if (interactive )
+    {
+#ifndef _WIN32
+        tcsetattr(STDIN_FILENO, TCSANOW, &old_tio);
+#endif
+    }
+    else if(state != error)
+        if(generate_assembler)
+            generate_asm_code(generated_name);
+
     return result;
 }

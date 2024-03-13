@@ -445,6 +445,7 @@ state_t do_begin()
 {
     word_t  a = memory.get_current_address();
     return_stack.push(a);
+    return_stack.push(a);
     return neutral;
 }
 
@@ -617,7 +618,15 @@ state_t index_i()
 state_t index_j()
 {
     word_t  i = return_stack.top();
-    integer_stack.push(i);
+
+    return_stack.pop();
+    word_t  i_max = return_stack.top();
+    return_stack.pop();
+    word_t  j = return_stack.top();
+    return_stack.push(i_max);
+    return_stack.push(i);
+
+    integer_stack.push(j);
     return neutral;
 }
 
@@ -719,6 +728,7 @@ state_t check_item(std::string& item, state_t state)
         case hash("until"):
         case hash("loop"):
         case hash("+loop"):
+        case hash("again"):
             prepare_loop_exit(h);
             break;
         case hash("variable"):
@@ -787,8 +797,8 @@ state_t check_item(std::string& item, state_t state)
                 }
             }
             else
-            {
-                if (isdigit(item[0])) {
+            {   
+                if (isdigit(item[0]) || item[0] == '-') {
                     state = parse_number(item);
                 }
                 else {
@@ -1091,6 +1101,10 @@ state_t   register_builtin(std::string name, code_ptr_t code, genetator_t genera
 
 state_t init()
 {
+    std::string variable("base");
+    register_variable(variable);
+//    forth("10 base !");
+
     register_builtin(":", register_function, asm_function);
     register_builtin("^push", push_value, asm_push_value);
     register_builtin("^jump", do_jump, asm_jump);
@@ -1154,11 +1168,11 @@ void show_status(state_t state)
     if (ansi_colors)
     {
         if (state == error)
-            printf("\033[0;35m" "Error\n"  "\033[0;37m");
+            printf("\033[0;31m" "Error\n"  "\033[0;37m");
         else if (!integer_stack.empty())
-            printf("Ok %ld\n", integer_stack.size());
+            printf("\033[0;32m" "Ok %ld\n"    "\033[0;37m", integer_stack.size());
         else
-            printf("Ok\n");
+            printf("\033[0;33m" "Ok"  "\033[0;37m" "\n");
     }
     else
     {

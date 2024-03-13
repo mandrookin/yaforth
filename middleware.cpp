@@ -6,6 +6,20 @@ static function_list_t                            global_functions;
 static function_t*                                current_function;
 static std::vector<record_t>                      builtin_code;
 
+const char*  find_variable_by_address(word_t counter)
+{
+    const char* name = nullptr;
+    for (const auto  & v : global_variables)
+    {
+        if(counter == v.ADDR)
+        {
+            name = v.NAME.c_str();
+            break;
+        }
+    }
+    return name;
+}
+
 bool try_register_local_string(std::string &name, uint32_t value)
 {
     bool result = current_function != nullptr;

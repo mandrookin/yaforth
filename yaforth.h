@@ -73,6 +73,7 @@ void define_function(record_t* co);
 void register_code(record_t* co);
 bool is_compile_mode();
 bool try_register_local_string(std::string& name, uint32_t address);
+const char* find_variable_by_address(word_t counter);
 function_t* lookup_current_function(void);
 bool reset_current_function();
 function_list_t& get_program();
@@ -82,4 +83,7 @@ record_t* find_record(uint32_t h);
 typedef std::map<uint32_t, record_t>    registry_t;
 
 state_t forth(const char* str);
+
+extern bool                                ansi_colors;
+
 

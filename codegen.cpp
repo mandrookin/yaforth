@@ -118,6 +118,8 @@ void generate_code(const char * src, ram_memory & memory, registry_t & words)
     fprintf(OUT, "assign    r14    esp		; Return stack pointer\n");
     fprintf(OUT, "assign    r11    stack		; Data stack\n\n");
 
+    fprintf(OUT, "$fourth    equ    3		    ; Fourth element\n\n");
+    fprintf(OUT, "$third     equ    2		    ; Third element\n\n");
     fprintf(OUT, "$second    equ    1		    ; Second element\n\n");
 
     fprintf(OUT, "function crt0\n");
@@ -132,6 +134,7 @@ void generate_code(const char * src, ram_memory & memory, registry_t & words)
 
     word = prev = 0;
     word_t prepre = 0;
+    bool vars_marked = false;
 
     for (int i = 0; memory.get_current_address() < memory.get_execution_address(); ++i )
     {
@@ -145,16 +148,20 @@ void generate_code(const char * src, ram_memory & memory, registry_t & words)
         word = memory.get();
 
         if (words.count(word) == 0) {
-//            fprintf(stderr, "Got unknown word %08x\n", word);
-            if (prev != 0) {
-                if (words.count(prev) == 0)
-                    exit(-1);
-                record_t *fail = &words[prev];
-                record_t* f0 = &words[prepre];
-                fprintf(OUT, "    dq    0x%08x ; Not in dictionary\n", word);
-                        continue;
-            }
+            const char* note = find_variable_by_address(a);
+            if (note == nullptr)
+                note = "Not in dictionary";
+                
+            fprintf(OUT, "    dq    0x%08x ; %s IP = %08x\n", word, note, a);
+            vars_marked = true;
+            continue;
         }
+
+        if (vars_marked) {
+            fprintf(OUT, "\n");
+            vars_marked = false;
+        }
+
         record_t* rec = &words[word];
         switch (rec->TYPE)
         {
@@ -251,11 +258,11 @@ void asm_sub(ram_memory* mem, struct word_record* rec)
 
 void asm_mul(ram_memory* mem, struct word_record* rec)
 {
-    fprintf(OUT, "    mov    r1, (stack)\n");
+    fprintf(OUT, "    mov    r0, (stack)\n");
     fprintf(OUT, "    inc    stack, 4\n");
-    fprintf(OUT, "    mov    r2, (stack)\n");
+    fprintf(OUT, "    mov    r1, (stack)\n");
     fprintf(OUT, "    call   _mul\n");
-    fprintf(OUT, "    mov    (stack), r0\n");
+    fprintf(OUT, "    mov    (stack), r2\n");
 }
 
 void asm_div(ram_memory* mem, struct word_record* rec)
@@ -604,6 +611,7 @@ void asm_endplusloop(ram_memory* mem, struct word_record* rec)
 }
 void asm_index_i(ram_memory* mem, struct word_record* rec)
 {
+#if false
     switch (loop_count)
     {
     case 1:
@@ -616,21 +624,22 @@ void asm_index_i(ram_memory* mem, struct word_record* rec)
         fprintf(stderr, "Max loop count achieved\n");
         exit(-1);
     }
+#else
+    fprintf(OUT, "    mov    r0, (esp)\n");
+#endif
     fprintf(OUT, "    dec    stack, 4\n");
     fprintf(OUT, "    mov    (stack), r0\n");
 }
 
 void asm_index_j(ram_memory* mem, struct word_record* rec)
 {
-    switch (loop_count)
+    if (loop_count < 2)
     {
-    case 2:
-        fprintf(OUT, "    mov    r0, (esp)\n");
-        break;
-    default:
-        fprintf(stderr, "Max loop count achieved\n");
+        fprintf(stderr, "No j variable defined in current context\n");
         exit(-1);
     }
+    fprintf(OUT, ";;; debug\n");
+    fprintf(OUT, "    mov    r0, esp.third\n");
     fprintf(OUT, "    dec    stack, 4\n");
     fprintf(OUT, "    mov    (stack), r0\n");
 }
