@@ -220,12 +220,14 @@ void asm_here(ram_memory* mem, struct word_record* rec)
 
 void asm_store(ram_memory* mem, struct word_record* rec)
 {
+    fprintf(OUT, ";;  ---------  ASM store -----------\n");
     fprintf(OUT, "    mov    r6, (stack)\n");
     fprintf(OUT, "    inc    stack, 4\n");
     fprintf(OUT, "    mov    r5, (stack)\n");
-    fprintf(OUT, "    shl    r5, 2\n");
-    fprintf(OUT, "    mov    r6, (r5)\n");
-    fprintf(OUT, "    mov    (stack), r6\n");
+    fprintf(OUT, "    shl    r6, 2\n");
+//    fprintf(OUT, "    mov    r5, (r6)\n");
+//    fprintf(OUT, "    mov    (stack), r5\n");
+    fprintf(OUT, "    mov    (r6), r5\n");
 }
 
 void asm_fetch(ram_memory* mem, struct word_record* rec)
@@ -238,9 +240,9 @@ void asm_fetch(ram_memory* mem, struct word_record* rec)
 
 void asm_add(ram_memory* mem, struct word_record* rec)
 {
-    fprintf(OUT, "    mov    r6, (stack)\n");
-    fprintf(OUT, "    inc    stack, 4\n");
     fprintf(OUT, "    mov    r5, (stack)\n");
+    fprintf(OUT, "    inc    stack, 4\n");
+    fprintf(OUT, "    mov    r6, (stack)\n");
     fprintf(OUT, "    clc\n");
     fprintf(OUT, "    addc   r6, r5\n");
     fprintf(OUT, "    mov    (stack), r6\n");
@@ -248,11 +250,11 @@ void asm_add(ram_memory* mem, struct word_record* rec)
 
 void asm_sub(ram_memory* mem, struct word_record* rec)
 {
-    fprintf(OUT, "    mov    r6, (stack)\n");
-    fprintf(OUT, "    inc    stack, 4\n");
     fprintf(OUT, "    mov    r5, (stack)\n");
+    fprintf(OUT, "    inc    stack, 4\n");
+    fprintf(OUT, "    mov    r6, (stack)\n");
     fprintf(OUT, "    clc\n");
-    fprintf(OUT, "    addc   r6, r5\n");
+    fprintf(OUT, "    subc   r6, r5\n");
     fprintf(OUT, "    mov    (stack), r6\n");
 }
 
@@ -588,7 +590,6 @@ void asm_endloop(ram_memory* mem, struct word_record* rec)
     fprintf(OUT, "    mov    r0, (esp)\n");
     fprintf(OUT, "    inc    r0\n");
     fprintf(OUT, "    mov    (esp), r0\n");
-//    fprintf(OUT, "    cmp    r1, esp[4]\n");
     fprintf(OUT, "    cmp    r0, esp.second\n");
     fprintf(OUT, "    jne    looplabel_%d\n", loop_count);
     fprintf(OUT, "leave_%d:\n", loop_count--);
@@ -603,30 +604,14 @@ void asm_endplusloop(ram_memory* mem, struct word_record* rec)
     fprintf(OUT, "    clc\n");
     fprintf(OUT, "    addc   r0, r6\n");
     fprintf(OUT, "    mov    (esp), r0\n");
-//    fprintf(OUT, "    cmp    r1, esp[4]\n");
-    fprintf(OUT, "    cmp    r1, esp.second\n");
+    fprintf(OUT, "    cmp    r0, esp.second\n");
     fprintf(OUT, "    jne    looplabel_%d\n", loop_count);
     fprintf(OUT, "leave_%d:\n", loop_count--);
     fprintf(OUT, "    inc    esp, 8\n");
 }
 void asm_index_i(ram_memory* mem, struct word_record* rec)
 {
-#if false
-    switch (loop_count)
-    {
-    case 1:
-        fprintf(OUT, "    mov    r0, (esp)\n");
-        break;
-    case 2:
-        fprintf(OUT, "    mov    r0, esp[8]\n");
-        break;
-    default:
-        fprintf(stderr, "Max loop count achieved\n");
-        exit(-1);
-    }
-#else
     fprintf(OUT, "    mov    r0, (esp)\n");
-#endif
     fprintf(OUT, "    dec    stack, 4\n");
     fprintf(OUT, "    mov    (stack), r0\n");
 }
@@ -663,7 +648,7 @@ void asm_untilloop(ram_memory* mem, struct word_record* rec)
     fprintf(OUT, "    mov    r0, (stack)\n");
     fprintf(OUT, "    inc    stack, 4\n");
     fprintf(OUT, "    inc    r0\n");
-    fprintf(OUT, "    jne     loopbegin_%d\n", loop_count);
+    fprintf(OUT, "    js     loopbegin_%d\n", loop_count);
 
     loop_count--;
 }

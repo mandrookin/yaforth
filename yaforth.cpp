@@ -454,12 +454,18 @@ state_t do_until()
     word_t  i, a;
 
     a = return_stack.top();
+//    return_stack.pop(); // Не спрашивай прчему так
+//    a = return_stack.top();
+//    if (a != i) {
+//        fprintf(stderr, "Synch error 64\n");
+//    }
 
     i = integer_stack.top();
     integer_stack.pop();
 
 
     if (i == -1 ) {
+        return_stack.pop();
         return_stack.pop();
         return neutral;
     }
@@ -888,8 +894,12 @@ state_t forth(const char* str)
             case '\n':
             case '\t':
             case ' ':
-                if (!buffer.empty())
+                if (!buffer.empty()) {
+#if TRACE
+                    printf("TRACE %s\n", buffer.c_str());
+#endif
                     state = check_item(buffer, state);
+                }
                 if (state == error || state == done)
                     continue;
                 if (func_name.empty() && (ch == '\n' || ch == 0)) {

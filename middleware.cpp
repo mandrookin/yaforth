@@ -24,8 +24,12 @@ bool try_register_local_string(std::string &name, uint32_t value)
 {
     bool result = current_function != nullptr;
     if (result) {
-        if (current_function->strings.count(name) > 0)
-            throw "Duplicated value detected";
+        if (current_function->strings.count(name) > 0) 
+        {
+//            throw "Duplicated value detected";
+            fprintf(stderr, "%s already defined\n ", name.c_str());
+            return false;
+        }
         current_function->strings[name] = value;
     }
     return result;
