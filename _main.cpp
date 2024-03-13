@@ -19,6 +19,7 @@ static bool                         generate_assembler = false;
 #include <cstdio>
 #include <cstdlib>
 #include <unistd.h>
+#include <termios.h>
 
 #define _getcwd getcwd
 
