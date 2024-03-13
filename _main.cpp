@@ -121,7 +121,7 @@ int main(int argc, char* argv[])
 #ifndef _WIN32
     if (interactive)
     {
-        struct new_tio;
+        struct termios new_tio;
         tcgetattr(STDIN_FILENO, &old_tio);
         new_tio = old_tio;
         new_tio.c_lflag &= (~ICANON & ~ECHOE);
