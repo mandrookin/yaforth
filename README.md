@@ -17,6 +17,7 @@ Source code written in C++.
 Type `./yaforth` and press enter to go interactive mode.  
 Type `bye` and press enter to exit.  
 Type `./yaforth tests/hello.frt` to see hello-world test.
+Type `./yaforth -a tests/hello.frt` to generate `test/hello.asm`.  
 
 
 

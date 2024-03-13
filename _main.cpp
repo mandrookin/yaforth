@@ -23,11 +23,17 @@ static bool                         generate_assembler = false;
 
 #define _getcwd getcwd
 
-unsigned char getch()
-{
-    return getc(stdin);
-}
-struct termios old_tio;
+#define USE_READLINE
+
+#ifdef USE_READLINE
+#include <readline/readline.h>
+#endif
+
+char * readline_gets(char * buff, int sz, FILE * fp);
+
+static struct termios old_tio;
+static struct termios new_tio;
+static char prompt[80];
 
 #endif
 
@@ -54,7 +60,7 @@ int intro()
 
 // Do not uncomment
 #if VIRTUAL_MACHINE_STUB_AND_TESTS
-int * return_next_instruction_pointer()
+int * return_next_instruction_pointer_32bits()
 {
     _asm {
         mov     eax, [ebp+4]
@@ -90,7 +96,7 @@ state_t read_stream(FILE * fp)
         if (state == error && !interactive)
             break;
 
-        char* ptr = fgets(line, max_line_size - 1, fp);
+        char* ptr = readline_gets(line, max_line_size - 1, fp);
         if (ptr)
         {
             SKIP_PREFIX
@@ -103,6 +109,108 @@ state_t read_stream(FILE * fp)
     }
     return state;
 }
+
+void load_term_settings()
+{
+        tcgetattr(STDIN_FILENO, &old_tio);
+        new_tio = old_tio;
+        new_tio.c_lflag &= (~ICANON & ~ECHOE);
+}
+
+void restore_term_settings()
+{
+        tcsetattr(STDIN_FILENO, TCSANOW, &old_tio);
+}
+
+void enter_canonical_state()
+{
+        tcsetattr(STDIN_FILENO, TCSANOW, &old_tio);
+}
+
+void leave_canonical_state()
+{
+        tcsetattr(STDIN_FILENO, TCSANOW, &new_tio);
+}
+
+int read_key()
+{
+    int ch;
+#if _WIN32
+    ch = getc(stdin);
+#else
+    leave_canonical_state();
+    ch = getc(stdin);
+    enter_canonical_state();
+#endif
+    return ch;
+}
+
+#ifdef USE_READLINE
+
+char * readline_gets(char * buff, int sz, FILE * fp)
+{
+    static char *line_read = (char *)NULL;
+    char  * line_ptr;
+
+    if (line_read)
+    {
+        free(line_read);
+        line_read = (char *)NULL;
+    }
+    line_ptr = line_read = readline(prompt);
+
+    if (line_ptr)
+    {
+/*
+        while (isspace(*line_ptr))
+            line_ptr++;
+        if (*line_ptr) {
+            int res;
+            while ((res = history_search_pos(line_ptr, 1, 0)) >= 0)
+                remove_history(res);
+            add_history(line_ptr);
+        }
+*/
+        snprintf(buff, sz, "%s\n", line_ptr);
+//printf("GOT: %s\n", line_ptr);
+    }
+    else {
+        buff[0] = 0;
+    }
+    return buff;
+}
+
+#else
+char * readline_gets(char * buff, int sz, FILE * fp)
+{
+    fprintf(stdout,"%s\n", prompt);
+    return fgets(buff, sz, fp);
+}
+#endif
+
+void show_status(state_t state)
+{
+    if (ansi_colors)
+    {
+        if (state == error)
+            strncpy(prompt,"\033[0;35m" "Error\n" "\033[0;37m", sizeof(prompt));
+        else if (get_stack_size() != 0)
+            snprintf(prompt, sizeof(prompt) , "\033[0;32m" "Ok %d\n"  "\033[0;37m", get_stack_size());
+        else
+            strncpy(prompt, "\033[0;33m" "Ok\n" "\033[0;37m", sizeof(prompt));
+    }
+    else
+    {
+        if (state == error)
+            strncpy(prompt,"Error\n", sizeof(prompt));
+        else if (get_stack_size() != 0)
+            snprintf(prompt, sizeof(prompt) , "Ok %d\n", get_stack_size());
+        else
+            strncpy(prompt,"Ok\n", sizeof(prompt));
+    }
+}
+
+
 
 int main(int argc, char* argv[])
 {
@@ -118,16 +226,11 @@ int main(int argc, char* argv[])
 
     interactive = isatty(0);
 
-#ifndef _WIN32
     if (interactive)
     {
-        struct termios new_tio;
-        tcgetattr(STDIN_FILENO, &old_tio);
-        new_tio = old_tio;
-        new_tio.c_lflag &= (~ICANON & ~ECHOE);
-        tcsetattr(STDIN_FILENO, TCSANOW, &new_tio);
+        load_term_settings();
     }
-#endif
+    
 
     init();
 
@@ -159,7 +262,16 @@ int main(int argc, char* argv[])
                 if (!generated_name)
                     generated_name = argv[i];
                 interactive = false;
-                state = read_stream(fp);
+
+                try 
+                {
+                   state = read_stream(fp);
+                }
+//                catch(char const *exception)
+                catch(char const &exception)
+                {
+                   fprintf(stderr, "EXCEPRION: %s\n", &exception);
+                }
                 fclose(fp);
                 stream_count++;
             }
@@ -173,9 +285,7 @@ int main(int argc, char* argv[])
 
     if (interactive )
     {
-#ifndef _WIN32
-        tcsetattr(STDIN_FILENO, TCSANOW, &old_tio);
-#endif
+        restore_term_settings();
     }
     else if(state != error)
         if(generate_assembler)

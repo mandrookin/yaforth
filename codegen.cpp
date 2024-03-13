@@ -1,4 +1,12 @@
-﻿#include "generators.h"
+﻿
+// codegen.cpp : This is gode generatore for Etherest assemler
+// 
+// With hope that this is useful stuff but without any warrany
+//
+// This file distributed under Xameleon Green License
+//
+//
+#include "generators.h"
 #include "yaforth.h"
 #include <chrono>
 

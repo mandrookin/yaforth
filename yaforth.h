@@ -72,6 +72,7 @@ void define_global_variable(record_t* co);
 void define_function(record_t* co);
 void register_code(record_t* co);
 bool is_compile_mode();
+int get_stack_size();
 bool try_register_local_string(std::string& name, uint32_t address);
 const char* find_variable_by_address(word_t counter);
 function_t* lookup_current_function(void);

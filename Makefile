@@ -5,6 +5,7 @@ ifeq ($(OS),Windows_NT)
   PLUGINS := 
 else
   PLUGINS := 
+  READLINE := readline
 endif
 
 SRC := yaforth.cpp middleware.cpp codegen.cpp _main.cpp
@@ -25,11 +26,11 @@ CXXFLAGS := -O3
 ifeq ($(OS),Windows_NT)
 all: $(OBJECTS)
 	$(CXX) $^ -o yaforth
-#	$(CXX) $^ -l$(XLIB) -o yaforth
+#	$(CXX) $^ -l$(LIBS) -o yaforth
 else
 all: $(OBJECTS)
-	$(CXX) $^ $(DEBUG) -o yaforth
-#	$(CXX) $^ $(DEBUG) -l$(XLIB) -o yaforth
+#	$(CXX) $^ $(DEBUG) -o yaforth
+	$(CXX) $^ $(DEBUG) -l$(READLINE) -o yaforth
 endif
 
 TESTS:=$(shell find tests -name *.frt)

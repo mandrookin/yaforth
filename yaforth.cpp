@@ -2,7 +2,7 @@
 // 
 // With hope that this is useful stuff but without any warrany
 //
-// This file distributed under Xameleon Greens License
+// This file distributed under Xameleon Green License
 //
 //
 #ifdef _WIN32
@@ -23,9 +23,12 @@
 
 #define _getcwd getcwd
 
+extern int read_key();
+
 unsigned char _getch()
 {
-    return getc(stdin);
+//    return getc(stdin);
+      return read_key();
 }
 
 
@@ -72,6 +75,10 @@ record_t* find_record(uint32_t h)
     return rec_ptr;
 }
 
+int get_stack_size()
+{
+    return integer_stack.size();
+}
 
 #pragma region Snippets
 
@@ -763,11 +770,10 @@ state_t check_item(std::string& item, state_t state)
 
             if (words.count(h) == 0)
             {
-
                 std::string lowered = item;
                 std::transform(lowered.begin(), lowered.end(), lowered.begin(),
-                    [](unsigned char c) { return std::tolower(c); });                
-                
+                    [](unsigned char c) { return std::tolower(c); });
+
                 uint32_t lower_h = hash(lowered.c_str());
                 if (words.count(lower_h) > 0) {
                     record_t* r = &words[lower_h];
@@ -1109,11 +1115,28 @@ state_t   register_builtin(std::string name, code_ptr_t code, genetator_t genera
     return neutral;
 }
 
+void register_variable(const char * variable_name)
+{
+    std::string variable(variable_name);
+    register_variable(variable);
+}
+
+void register_variable(const char * variable_name, int value)
+{
+    register_variable(variable_name);
+    uint32_t h = hash(variable_name);
+    record_t*    prec;
+
+    prec = &words[h];
+    printf("Set variable: %s ADDR %u = %d\n", variable_name, prec->ADDR, value);
+    memory.set(prec->ADDR, value);
+}
+
+
 state_t init()
 {
-    std::string variable("base");
-    register_variable(variable);
-//    forth("10 base !");
+    register_variable("base", 10);
+    register_variable("ansi-term");
 
     register_builtin(":", register_function, asm_function);
     register_builtin("^push", push_value, asm_push_value);
@@ -1167,32 +1190,11 @@ state_t init()
     register_builtin("emit", emit, asm_emit);
     register_builtin("key", get_key, asm_key);
 
+    forth("0 ansi-term !");
     forth(": cr 10 emit ;");
     forth(": cells 4 * ;");
     forth(": ? @ . ;");
     return neutral;
-}
-
-void show_status(state_t state)
-{
-    if (ansi_colors)
-    {
-        if (state == error)
-            printf("\033[0;31m" "Error\n"  "\033[0;37m");
-        else if (!integer_stack.empty())
-            printf("\033[0;32m" "Ok %ld\n"    "\033[0;37m", integer_stack.size());
-        else
-            printf("\033[0;33m" "Ok"  "\033[0;37m" "\n");
-    }
-    else
-    {
-        if (state == error)
-            printf("Error\n");
-        else if (!integer_stack.empty())
-            printf("Ok %ld\n", integer_stack.size());
-        else
-            printf("Ok\n");
-    }
 }
 
 void generate_asm_code(const char* src)
