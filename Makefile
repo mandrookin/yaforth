@@ -38,6 +38,7 @@ endif
 
 TESTS:=$(shell find tests -name *.frt)
 check:
+	TERM=ansi
 	@echo "Iterate overt test files in ./test dicrectory"
 	@for forth_file in $(TESTS); do \
 	    printf '##############  $(bold)%s$(sgr0) ###############\n' $$forth_file; \
@@ -45,6 +46,7 @@ check:
 	    ./yaforth -no-stdin $$forth_file; \
 	done
 
+TERM=ansi
 bold := $(shell tput bold)
 sgr0 := $(shell tput sgr0)
 
