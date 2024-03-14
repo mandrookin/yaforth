@@ -46,7 +46,7 @@ check:
 	    ./yaforth -no-stdin $$forth_file; \
 	done
 
-TERM=ansi
+TERM := ansi
 bold := $(shell tput bold)
 sgr0 := $(shell tput sgr0)
 
