@@ -40,8 +40,8 @@ TESTS:=$(shell find tests -name *.frt)
 check:
 	@echo "Iterate overt test files in ./test dicrectory"
 	@for forth_file in $(TESTS); do \
-	    printf '##############  $(bold)$$forth_file$(sgr0) ###############' \
-	    echo "##############  $$forth_file ###############"; \
+	    printf '##############  $(bold)%s$(sgr0) ###############\n' $$forth_file; \
+	    #echo "##############  $$forth_file ###############"; \
 	    ./yaforth -no-stdin $$forth_file; \
 	done
 
