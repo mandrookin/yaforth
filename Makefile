@@ -5,8 +5,11 @@ ifeq ($(OS),Windows_NT)
   PLUGINS := 
 else
   PLUGINS := 
-  READLINE := readline
-endif
+#  READLINE := -DUSE_READLINE -lreadline
+#  $(shell /sbin/ldconfig -p | grep readline)
+#  STATUS := $$? 
+#  $(shell echo "Status is $(STATUS)")
+endif          	
 
 SRC := yaforth.cpp middleware.cpp codegen.cpp _main.cpp
 
@@ -30,24 +33,21 @@ all: $(OBJECTS)
 else
 all: $(OBJECTS)
 #	$(CXX) $^ $(DEBUG) -o yaforth
-	$(CXX) $^ $(DEBUG) -l$(READLINE) -o yaforth
+	$(CXX) $^ $(DEBUG) $(READLINE) -o yaforth
 endif
 
 TESTS:=$(shell find tests -name *.frt)
 check:
 	@echo "Iterate overt test files in ./test dicrectory"
-	@for asm_file in $(TESTS); do \
-	    echo "#########  $$asm_file ########"; \
-	    ./yaforth $$asm_file; \
+	@for forth_file in $(TESTS); do \
+	    printf '##############  $(bold)$$forth_file$(sgr0) ###############' \
+	    echo "##############  $$forth_file ###############"; \
+	    ./yaforth -no-stdin $$forth_file; \
 	done
 
 bold := $(shell tput bold)
 sgr0 := $(shell tput sgr0)
 
-printf-bold-1:
-	@printf 'normal text - $(bold)bold text$(sgr0)'
-
-.PHONY: printf-bold-1
 
 clean:
 	rm -f $(OBJECTS) yaforth

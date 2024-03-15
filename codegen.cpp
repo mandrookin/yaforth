@@ -1,10 +1,9 @@
 ﻿
 // codegen.cpp : This is gode generatore for Etherest assemler
 // 
-// With hope that this is useful stuff but without any warrany
+// With hope that this code useful stuff but without any warranty
 //
 // This file distributed under Xameleon Green License
-//
 //
 #include "generators.h"
 #include "yaforth.h"
@@ -52,7 +51,6 @@ void genetate_strings(ram_memory& memory)
             {
                 uint32_t    storage = memory.get_current_address();
 
-//                for (const auto& i : cf->strings)
                 {
                     fprintf(OUT, "%s\tdb\t'", name);
                     uint32_t idx = value;
@@ -107,7 +105,6 @@ void generate_code(const char * src, ram_memory & memory, registry_t & words)
             OUT = stderr;
             fprintf(OUT, "Unable open file '%s' for writing\n", filename.c_str());
         }
-
     }
     else
     {
@@ -133,6 +130,7 @@ void generate_code(const char * src, ram_memory & memory, registry_t & words)
     fprintf(OUT, "function crt0\n");
     fprintf(OUT, "    load	stack, 0x8000; Set Data stack\n");
     fprintf(OUT, "    load	esp,   0x7000; Set Return stack\n");
+    fprintf(OUT, "    call	decimal\n");
     fprintf(OUT, "    call	_main\n");
     fprintf(OUT, "    send\n");
     fprintf(OUT, "end\n\n");
@@ -228,13 +226,11 @@ void asm_here(ram_memory* mem, struct word_record* rec)
 
 void asm_store(ram_memory* mem, struct word_record* rec)
 {
-    fprintf(OUT, ";;  ---------  ASM store -----------\n");
+ //   fprintf(OUT, ";;  ---------  ASM store -----------\n");
     fprintf(OUT, "    mov    r6, (stack)\n");
     fprintf(OUT, "    inc    stack, 4\n");
     fprintf(OUT, "    mov    r5, (stack)\n");
     fprintf(OUT, "    shl    r6, 2\n");
-//    fprintf(OUT, "    mov    r5, (r6)\n");
-//    fprintf(OUT, "    mov    (stack), r5\n");
     fprintf(OUT, "    mov    (r6), r5\n");
 }
 
@@ -410,15 +406,15 @@ void asm_dup(ram_memory* mem, struct word_record* rec)
 
 void asm_swap(ram_memory* mem, struct word_record* rec)
 {
-    fprintf(OUT, "    mov    r6, stack[4]\n");
+    fprintf(OUT, "    mov    r6, stack.second\n");
     fprintf(OUT, "    mov    r5, (stack)\n");
     fprintf(OUT, "    mov    (stack), r6\n");
-    fprintf(OUT, "    mov    stack[4], r5\n");
+    fprintf(OUT, "    mov    stack.second, r5\n");
 }
 
 void asm_over(ram_memory* mem, struct word_record* rec)
 {
-    fprintf(OUT, "    mov    r6, stack[4]\n");
+    fprintf(OUT, "    mov    r6, stack.second\n");
     fprintf(OUT, "    dec    stack, 4\n");
     fprintf(OUT, "    mov    (stack), r6\n");
 }
@@ -426,11 +422,11 @@ void asm_over(ram_memory* mem, struct word_record* rec)
 void asm_rot(ram_memory* mem, struct word_record* rec)
 {
     fprintf(OUT, "    mov    r6, (stack)\n");
-    fprintf(OUT, "    mov    r5, stack[4]\n");
-    fprintf(OUT, "    mov    r4, stack[8]\n");
+    fprintf(OUT, "    mov    r5, stack.second\n");
+    fprintf(OUT, "    mov    r4, stack.third\n");
     fprintf(OUT, "    mov    (stack), r6\n");    // Лениво думать, легче отладить в эиуляторе
-    fprintf(OUT, "    mov    stack[4], r4\n");
-    fprintf(OUT, "    mov    stack[8], r5\n");
+    fprintf(OUT, "    mov    stack.second, r4\n");
+    fprintf(OUT, "    mov    stack.third, r5\n");
 }
 
 void asm_drop(ram_memory* mem, struct word_record* rec)
@@ -440,23 +436,26 @@ void asm_drop(ram_memory* mem, struct word_record* rec)
 
 void asm_dot(ram_memory* mem, struct word_record* rec)
 {
-     fprintf(OUT, "    mov    r0, (stack)\n");
+    // Check current base
 
-     fprintf(OUT, "    load   r3, 0x80000000\n");
-     fprintf(OUT, "    and   r3, r0\n");
-     fprintf(OUT, "    je    label_print_%d\n", ++label_idx);
+    // print decimal number
+    fprintf(OUT, "    mov    r0, (stack)\n");
 
-     fprintf(OUT, "    neg    r0\n");
-     fprintf(OUT, "    mov    (stack), r0\n");
-     fprintf(OUT, "    load   r3, 45 ; '-'\n");
-     fprintf(OUT, "    call   _putchar\n");
-     fprintf(OUT, "    mov    r0, (stack)\n");
+    fprintf(OUT, "    load   r3, 0x80000000\n");
+    fprintf(OUT, "    and   r3, r0\n");
+    fprintf(OUT, "    je    label_print_%d\n", ++label_idx);
 
-     fprintf(OUT, "label_print_%d:\n", label_idx);
-     fprintf(OUT, "    call   _print_dec\n");
-     fprintf(OUT, "    load   r3, 32\n");
-     fprintf(OUT, "    call   _putchar\n");
-     fprintf(OUT, "    inc    stack, 4\n");
+    fprintf(OUT, "    neg    r0\n");
+    fprintf(OUT, "    mov    (stack), r0\n");
+    fprintf(OUT, "    load   r3, 45 ; '-'\n");
+    fprintf(OUT, "    call   _putchar\n");
+    fprintf(OUT, "    mov    r0, (stack)\n");
+
+    fprintf(OUT, "label_print_%d:\n", label_idx);
+    fprintf(OUT, "    call   _print_dec\n");
+    fprintf(OUT, "    load   r3, 32\n");
+    fprintf(OUT, "    call   _putchar\n");
+    fprintf(OUT, "    inc    stack, 4\n");
 }
 
 void asm_key(ram_memory* mem, struct word_record* rec)
@@ -639,10 +638,8 @@ void asm_index_j(ram_memory* mem, struct word_record* rec)
 
 void asm_leave(ram_memory* mem, struct word_record* rec)
 {
-//    fprintf(OUT, "    inc    esp, 8\n");
     word_t  addr = mem->get();
     fprintf(OUT, "    jmp    leave_%d\n", loop_count);
-
 }
 
 void asm_beginloop(ram_memory* mem, struct word_record* rec)

@@ -1,6 +1,6 @@
 // yaforth.cpp : This yet another Forth implementation
 // 
-// With hope that this is useful stuff but without any warrany
+// With hope that this code useful stuff but without any warranty
 //
 // This file distributed under Xameleon Green License
 //
@@ -23,20 +23,14 @@
 
 #define _getcwd getcwd
 
-extern int read_key();
-
-unsigned char _getch()
-{
-//    return getc(stdin);
-      return read_key();
-}
-
-
 #endif
+
+extern int read_key();
 
 #include "yaforth.h"
 #include "memory.h"
 #include "generators.h"
+#include <stdexcept>
 
 //#define TRACE true
 
@@ -52,9 +46,9 @@ static registry_t                   words;
 static std::string                  func_name;
 static ram_memory                   memory;
 static int                          line_no;
-
+static word_t                       base_address;
 // Global internal states
-bool                                ansi_colors = false;
+options_t   options;
 
 state_t     forth(const char* str);
 uint32_t    register_word(std::string &word, word_t address);
@@ -83,10 +77,31 @@ int get_stack_size()
 #pragma region Snippets
 
 
-
 state_t parse_number(std::string& number_str)
 {
-    word_t n = std::stol(number_str);
+    word_t n;
+    word_t base = memory.get(base_address);
+
+    int mask = 0;
+    switch (base)
+    {
+    case 2:
+        fprintf(stderr, "TODO: input in octal base\n");
+        return error;
+    case 8:
+        sscanf(number_str.c_str(), "%o ", &n);
+        break;
+    case 10:
+        n = std::stol(number_str);
+        break;
+    case 16:
+        sscanf(number_str.c_str(), "%x ", &n);
+        break;
+    default:
+        fprintf(stderr, "Only binary, octal, decimal and hexdecimal numbers allowed in this version\n");
+        return error;
+    }
+
     memory.put(hash("^push"));
     memory.put(n);
     number_str.clear();
@@ -405,14 +420,40 @@ state_t do_dot()
         printf("Stack underflow\n");
         return error;;
     }
-    printf("%d ", integer_stack.top());
+    word_t base = memory.get(base_address);
+    word_t val = integer_stack.top();
+    int mask = 0;
+    switch (base)
+    {
+    case 2:
+        mask = 0x80;
+        for (int i = 0; i < 8; i++)
+        {
+            fputc(mask & val ? '1' : '0', stdout);
+            mask >>= 1;
+        }
+        break;
+    case 8:
+        printf("0%o ", val);
+        break;
+    case 10:
+        printf("%d ", val);
+        break;
+    case 16:
+        printf("0x%x ", val);
+        break;
+    default:
+        fprintf(stderr,"Only binary, octal, decimal and hexdecimal numbers allowed in this version\n");
+        return error;
+    }
+
     integer_stack.pop();
     return neutral;
 }
 
 state_t get_key()
 {
-    word_t ch = _getch();
+    word_t ch = read_key();
     integer_stack.push(ch);
     return neutral;
 }
@@ -461,11 +502,6 @@ state_t do_until()
     word_t  i, a;
 
     a = return_stack.top();
-//    return_stack.pop(); // Не спрашивай прчему так
-//    a = return_stack.top();
-//    if (a != i) {
-//        fprintf(stderr, "Synch error 64\n");
-//    }
 
     i = integer_stack.top();
     integer_stack.pop();
@@ -765,9 +801,23 @@ state_t check_item(std::string& item, state_t state)
         case hash("bye"):
             state = finish;
             break;
+        case hash("hex"):
+            memory.put(h);
+            if (func_name.empty())
+                memory.set(base_address, 16);
+            break;
+        case hash("decimal"):
+            memory.put(h);
+            if(func_name.empty())
+                memory.set(base_address, 10);
+            break;
+        case hash("octal"):
+            memory.put(h);
+            if (func_name.empty())
+                memory.set(base_address, 8);
+            break;
         default:
         {
-
             if (words.count(h) == 0)
             {
                 std::string lowered = item;
@@ -777,7 +827,7 @@ state_t check_item(std::string& item, state_t state)
                 uint32_t lower_h = hash(lowered.c_str());
                 if (words.count(lower_h) > 0) {
                     record_t* r = &words[lower_h];
-                    if (r->TYPE == builtin)
+                    if (r->TYPE == builtin || r->TYPE == variable || r->TYPE == user)
                     {
                         h = lower_h;
                     }
@@ -809,8 +859,12 @@ state_t check_item(std::string& item, state_t state)
                 }
             }
             else
-            {   
-                if (isdigit(item[0]) || item[0] == '-') {
+            {
+                char ch = item[0];
+                if (isdigit(ch) || ch == '-') {
+                    state = parse_number(item);
+                } 
+                else if (ch >= 'a' && ch <= 'f' || ch >= 'A' && ch <= 'F') {
                     state = parse_number(item);
                 }
                 else {
@@ -844,10 +898,21 @@ state_t execute()
             printf("\nCommand not implemented\n");
             return error;
         }
+        
         record_t* rec = &words[cmd];
 #ifdef TRACE
             printf("\n%08x: %s ", a, rec->NAME.c_str());
 #endif
+            if ( !func_name.empty() && rec->MIN_STACK > integer_stack.size()) {
+                char err_buff[80];
+                snprintf(err_buff, 80, "%s[%u]: Stack underflow operation '%s'",
+                    func_name.c_str(),
+                    memory.get_current_address(),
+                    rec->NAME.c_str()
+                    );
+                throw std::out_of_range(std::string(err_buff));
+            }
+
         switch (rec->TYPE)
         {
         case builtin:
@@ -859,14 +924,13 @@ state_t execute()
             memory.jump(rec->ADDR);
             break;
         case constant:
-            throw "Not implemented";
+            throw std::runtime_error("Constant data has no eXecute rights");
             break;
         case variable:
-            throw "Not implemented";
+            throw std::runtime_error("Variable has no eXecute rights");
             break;
-
         default:
-            throw "Non implemented command type";
+            throw std::runtime_error("Non implemented command type");
         }
 
     }
@@ -1038,6 +1102,7 @@ state_t   register_constant(std::string& word)
     rec.NAME = word;
     rec.TYPE = constant;
     rec.CONSTANT = integer_stack.top();
+    rec.MIN_STACK = 0;
     rec.GENERATE = nullptr;
     integer_stack.pop();
     words[h] = rec;
@@ -1057,17 +1122,18 @@ state_t   register_variable(std::string &word)
 
     uint32_t ea = memory.get_execution_address();
     uint32_t a = memory.get_current_address();
-    if (ea != a)
-    {
-        throw "Insert jmp";
-        // Это не сработает для allot
-        memory.put(hash("^jump"));
-        word_t a = memory.get_current_address();
-        memory.put(a + 3);
-    }
+    //if (ea != a)
+    //{
+    //    // Это не сработает для allot
+    //    memory.put(hash("^jump"));
+    //    word_t a = memory.get_current_address();
+    //    memory.put(a + 3);
+    //    throw "Insert jmp";
+    //}
     rec.INDEX = words.size();
     rec.NAME = word;
     rec.TYPE = variable;
+    rec.MIN_STACK = 0;
     rec.ADDR = memory.get_current_address();
     words[h] = rec;
     memory.put(0);
@@ -1090,13 +1156,14 @@ uint32_t    register_word(std::string &word, word_t address)
     rec.NAME = word;
     rec.TYPE = user;
     rec.ADDR = address;
+    rec.MIN_STACK = 0;
     rec.GENERATE = nullptr;
     words[h] = rec;
     define_function(&rec);
     return h;
 }
 
-state_t   register_builtin(std::string name, code_ptr_t code, genetator_t generator)
+state_t   register_builtin(std::string name, int min_stack, code_ptr_t code, genetator_t generator)
 {
     uint32_t h = hash(name.c_str());
     record_t    rec;
@@ -1110,6 +1177,7 @@ state_t   register_builtin(std::string name, code_ptr_t code, genetator_t genera
     rec.TYPE = builtin;
     rec.BLTN = code;
     rec.GENERATE = generator;
+    rec.MIN_STACK = min_stack;
     words[h] = rec;
     register_code(&rec);
     return neutral;
@@ -1128,77 +1196,130 @@ void register_variable(const char * variable_name, int value)
     record_t*    prec;
 
     prec = &words[h];
+#if TRACE
     printf("Set variable: %s ADDR %u = %d\n", variable_name, prec->ADDR, value);
+#endif
     memory.set(prec->ADDR, value);
 }
 
+void decompile()
+{
+    memory.jump(0);
+    while (memory.running())
+    {
+        word_t a = memory.get_current_address();
+
+        word_t cmd = memory.get();
+
+        if (words.count(cmd) == 0) {
+            printf("[%u]: %d\n", a, cmd);
+            continue;
+        }
+        record_t* rec = &words[cmd];
+        switch (rec->TYPE)
+        {
+        case builtin:
+            printf("[%u]: %s BUILTIN\n", a, rec->NAME.c_str());
+            break;
+        case user:
+            printf("[%u]: %s USER\n", a, rec->NAME.c_str());
+            break;
+        case constant:
+            printf("[%u]: %s CONSTANT\n", a, rec->NAME.c_str());
+            break;
+        case variable:
+            printf("[%u]: %s VARIABLE\n", a, rec->NAME.c_str());
+            break;
+        default:
+            printf("[%u]: BAD TYPE\n", a);
+            break;
+        }
+    }
+}
 
 state_t init()
 {
-    register_variable("base", 10);
-    register_variable("ansi-term");
+    try {
+        register_variable("base", 10);
+        uint32_t h = hash("base");
+        record_t* r = &words[h];
+        base_address = r->ADDR;
 
-    register_builtin(":", register_function, asm_function);
-    register_builtin("^push", push_value, asm_push_value);
-    register_builtin("^jump", do_jump, asm_jump);
-    register_builtin("here", do_here, asm_here);
-    register_builtin("!", do_store, asm_store);
-    register_builtin("@", do_fetch, asm_fetch);
-    register_builtin("+", do_add, asm_add);
-    register_builtin("-", do_sub, asm_sub);
-    register_builtin("*", do_mul, asm_mul);
-    register_builtin("/", do_div, asm_div);
-    register_builtin("=", check_eq, asm_check_equ);
-    register_builtin("<>", check_not_eq, asm_check_notequ);
-    register_builtin("<", check_less, asm_check_less);
-    register_builtin(">", check_more, asm_check_more);
-    register_builtin("and", op_and, asm_and);
-    register_builtin("or", op_or, asm_or);
-    register_builtin("xor", op_xor, asm_xor);
-    register_builtin("invert", invert, asm_not);
-    register_builtin("mod", mod, asm_mod);
-    register_builtin("/mod", divmod, asm_divmod);
-    register_builtin("rshift", op_rshift, asm_right_shift);
-    register_builtin("lshift", op_lshift, asm_left_shift);
+        //        register_variable("num-format", 0);
+        register_variable("ansi-term");
 
-    register_builtin(">r", to_R, asm_to_R);
-    register_builtin("r>", from_R, asm_from_R);
-    register_builtin("r@", fetch_R, asm_fetch_R);
+        register_builtin(":", 0, register_function, asm_function);
+        register_builtin("^push", 1, push_value, asm_push_value);
+        register_builtin("^jump", 1, do_jump, asm_jump);
+        register_builtin("here", 0, do_here, asm_here);
+        register_builtin("!", 2, do_store, asm_store);
+        register_builtin("@", 1, do_fetch, asm_fetch);
+        register_builtin("+", 2, do_add, asm_add);
+        register_builtin("-", 2, do_sub, asm_sub);
+        register_builtin("*", 2, do_mul, asm_mul);
+        register_builtin("/", 2, do_div, asm_div);
+        register_builtin("=", 2, check_eq, asm_check_equ);
+        register_builtin("<>", 2, check_not_eq, asm_check_notequ);
+        register_builtin("<", 2, check_less, asm_check_less);
+        register_builtin(">", 2, check_more, asm_check_more);
+        register_builtin("and", 2, op_and, asm_and);
+        register_builtin("or", 2, op_or, asm_or);
+        register_builtin("xor", 2, op_xor, asm_xor);
+        register_builtin("invert", 1, invert, asm_not);
+        register_builtin("mod", 2, mod, asm_mod);
+        register_builtin("/mod", 2, divmod, asm_divmod);
+        register_builtin("rshift", 2, op_rshift, asm_right_shift);
+        register_builtin("lshift", 2, op_lshift, asm_left_shift);
 
-    register_builtin("dup", dup, asm_dup);
-    register_builtin("drop", drop, asm_drop);
-    register_builtin("swap", swap, asm_swap);
-    register_builtin("over", over, asm_over);
-    register_builtin("rot", rot, asm_rot);
-    register_builtin(";", op_return, asm_return);
+        register_builtin(">r", 1, to_R, asm_to_R);
+        register_builtin("r>", 0, from_R, asm_from_R);
+        register_builtin("r@", 0, fetch_R, asm_fetch_R);
 
-    register_builtin("if", do_condition, asm_if);
+        register_builtin("dup", 1, dup, asm_dup);
+        register_builtin("drop", 1, drop, asm_drop);
+        register_builtin("swap", 2, swap, asm_swap);
+        register_builtin("over", 2, over, asm_over);
+        register_builtin("rot", 3, rot, asm_rot);
+        register_builtin(";", 0, op_return, asm_return);
 
-    register_builtin("do", do_loop, asm_loop);
-    register_builtin("loop", end_loop, asm_endloop);
-    register_builtin("+loop", end_plus_loop, asm_endplusloop);
-    register_builtin("^leave", do_leave, asm_leave);
-    register_builtin("i", index_i, asm_index_i);
-    register_builtin("j", index_j, asm_index_j);
+        register_builtin("if", 1, do_condition, asm_if);
 
-    register_builtin("begin", do_begin, asm_beginloop);
-    register_builtin("until", do_until, asm_untilloop);
-    register_builtin("again", do_again, asm_again);
+        register_builtin("do", 2, do_loop, asm_loop);
+        register_builtin("loop", 0, end_loop, asm_endloop);
+        register_builtin("+loop", 1, end_plus_loop, asm_endplusloop);
+        register_builtin("^leave", 0, do_leave, asm_leave);
+        register_builtin("i", 0, index_i, asm_index_i);
+        register_builtin("j", 0, index_j, asm_index_j);
 
-    register_builtin(".", do_dot, asm_dot);
-    register_builtin(".\"", do_print_string, asm_print_string);
-    register_builtin("emit", emit, asm_emit);
-    register_builtin("key", get_key, asm_key);
+        register_builtin("begin", 0, do_begin, asm_beginloop);
+        register_builtin("until", 1, do_until, asm_untilloop);
+        register_builtin("again", 0, do_again, asm_again);
 
-    forth("0 ansi-term !");
-    forth(": cr 10 emit ;");
-    forth(": cells 4 * ;");
-    forth(": ? @ . ;");
+        register_builtin(".", 1, do_dot, asm_dot);
+        register_builtin(".\"", 0, do_print_string, asm_print_string);
+        register_builtin("emit", 1, emit, asm_emit);
+        register_builtin("key", 0, get_key, asm_key);
+
+        // Defaults
+        forth("0 ansi-term !");
+        forth(": cr 10 emit ;");
+        forth(": cells 4 * ;");
+        forth(": ? @ . ;");
+        forth(": decimal  10 base ! ;");
+        forth(": hex      16 base ! ;");
+        forth(": octal     8 base ! ;");
+        line_no = 0;
+    }
+    catch (std::exception const& a)
+    {
+        fprintf(stderr, "init() exception: %s\n", a.what());
+    }
     return neutral;
 }
 
 void generate_asm_code(const char* src)
 {
+//    decompile(); read_key();
     void generate_code(const char*, ram_memory & memory, registry_t & words);
     generate_code(src, memory, words);
 }

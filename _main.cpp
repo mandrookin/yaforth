@@ -1,7 +1,15 @@
+// _main.cpp : Just a main function of yet another Forth implementation
+// 
+// With hope that this code useful stuff but without any warranty
+//
+// This file distributed under Xameleon Green License
+//
+//
 #include "yaforth.h"
 
 static bool                         interactive;
-static bool                         generate_assembler = false;
+
+extern options_t   options;
 
 #ifdef _WIN32
 #define  _CRT_SECURE_NO_WARNINGS
@@ -23,19 +31,18 @@ static bool                         generate_assembler = false;
 
 #define _getcwd getcwd
 
-#define USE_READLINE
+//#define USE_READLINE
 
 #ifdef USE_READLINE
 #include <readline/readline.h>
 #endif
 
-char * readline_gets(char * buff, int sz, FILE * fp);
-
 static struct termios old_tio;
 static struct termios new_tio;
-static char prompt[80];
 
 #endif
+
+static char prompt[80];
 
 constexpr unsigned int hash(const char* s, int off = 0) {
     return !s[off] ? 5381 : (hash(s, off + 1) * 33) ^ s[off];
@@ -44,6 +51,7 @@ constexpr unsigned int hash(const char* s, int off = 0) {
 
 state_t init();
 void generate_asm_code(const char*);
+char* yaforth_gets(char* buff, int sz, FILE* fp);
 
 int intro()
 {
@@ -96,7 +104,7 @@ state_t read_stream(FILE * fp)
         if (state == error && !interactive)
             break;
 
-        char* ptr = readline_gets(line, max_line_size - 1, fp);
+        char* ptr = yaforth_gets(line, max_line_size - 1, fp);
         if (ptr)
         {
             SKIP_PREFIX
@@ -112,31 +120,41 @@ state_t read_stream(FILE * fp)
 
 void load_term_settings()
 {
+#ifndef _WIN32
         tcgetattr(STDIN_FILENO, &old_tio);
         new_tio = old_tio;
         new_tio.c_lflag &= (~ICANON & ~ECHOE);
+#endif
 }
 
 void restore_term_settings()
 {
+#ifndef _WIN32
         tcsetattr(STDIN_FILENO, TCSANOW, &old_tio);
+#endif
 }
 
 void enter_canonical_state()
 {
+#ifndef _WIN32
         tcsetattr(STDIN_FILENO, TCSANOW, &old_tio);
+#endif
 }
 
 void leave_canonical_state()
 {
-        tcsetattr(STDIN_FILENO, TCSANOW, &new_tio);
+#ifndef _WIN32
+    tcsetattr(STDIN_FILENO, TCSANOW, &new_tio);
+#endif
 }
 
 int read_key()
 {
     int ch;
+    if (options.no_stdin)
+        return -1;
 #if _WIN32
-    ch = getc(stdin);
+    ch = _getch();
 #else
     leave_canonical_state();
     ch = getc(stdin);
@@ -147,7 +165,7 @@ int read_key()
 
 #ifdef USE_READLINE
 
-char * readline_gets(char * buff, int sz, FILE * fp)
+char * yaforth_gets(char * buff, int sz, FILE * fp)
 {
     static char *line_read = (char *)NULL;
     char  * line_ptr;
@@ -181,16 +199,18 @@ char * readline_gets(char * buff, int sz, FILE * fp)
 }
 
 #else
-char * readline_gets(char * buff, int sz, FILE * fp)
+
+char * yaforth_gets(char * buff, int sz, FILE * fp)
 {
-    fprintf(stdout,"%s\n", prompt);
+    if(interactive)
+        fprintf(stdout,"%s", prompt);
     return fgets(buff, sz, fp);
 }
 #endif
 
 void show_status(state_t state)
 {
-    if (ansi_colors)
+    if (options.ansi_colors)
     {
         if (state == error)
             strncpy(prompt,"\033[0;35m" "Error\n" "\033[0;37m", sizeof(prompt));
@@ -241,10 +261,13 @@ int main(int argc, char* argv[])
                 switch (hash(argv[i]))
                 {
                 case hash("-ansi"):
-                    ansi_colors = !ansi_colors;
+                    options.ansi_colors = true;
                     continue;
                 case hash("-a"):
-                    generate_assembler = !generate_assembler;
+                    options.generate_assembler = true;
+                    continue;
+                case hash("-no-stdin"):
+                    options.no_stdin = true;
                     continue;
                 default:
                     fprintf(stderr, "unsupported key: %s\n", argv[i]);
@@ -283,12 +306,13 @@ int main(int argc, char* argv[])
             read_stream(fp);
         }
 
-    if (interactive )
-    {
-        restore_term_settings();
-    }
-    else if(state != error)
-        if(generate_assembler)
+        if (interactive)
+        {
+            restore_term_settings();
+        }
+        else if (state == error)
+            result = 1;
+        else if(options.generate_assembler)
             generate_asm_code(generated_name);
 
     return result;

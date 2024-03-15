@@ -54,6 +54,7 @@ struct word_record {
         uint32_t        CONSTANT;
         code_ptr_t      BLTN;
     };
+    int                 MIN_STACK;
     genetator_t         GENERATE;
 };
 
@@ -85,6 +86,12 @@ typedef std::map<uint32_t, record_t>    registry_t;
 
 state_t forth(const char* str);
 
-extern bool                                ansi_colors;
+typedef struct command_line_parameters   options_t;
+struct command_line_parameters {
+    bool                                ansi_colors = false;
+    bool                                no_stdin = false;
+    bool                                generate_assembler = false;
+};
+
 
 

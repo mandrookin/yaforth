@@ -19,5 +19,10 @@ Type `bye` and press enter to exit.
 Type `./yaforth tests/hello.frt` to see hello-world test.
 Type `./yaforth -a tests/hello.frt` to generate `test/hello.asm`.  
 
+### Command line options ###
 
+| ----------- | ----------------------------------------------- |
+|-a           | compile Forth to Assembler                      |
+|-ansi        | enable ANSI colore                              |
+|-no-stdin    | close stdin, return EOF on getc()               |
 
