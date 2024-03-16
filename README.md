@@ -21,8 +21,9 @@ Type `./yaforth -a tests/hello.frt` to generate `test/hello.asm`.
 
 ### Command line options ###
 
-| ----------- | ----------------------------------------------- |
-|-a           | compile Forth to Assembler                      |
-|-ansi        | enable ANSI colore                              |
-|-no-stdin    | close stdin, return EOF on getc()               |
+| Option       | Description                                     |
+| ------------ | ----------------------------------------------- |
+|-a            | compile Forth to Assembler                      |
+|-ansi         | enable ANSI colore                              |
+|-no-stdin     | close stdin, return EOF on getc()               |
 
