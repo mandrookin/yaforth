@@ -230,6 +230,7 @@ void asm_store(ram_memory* mem, struct word_record* rec)
     fprintf(OUT, "    mov    r6, (stack)\n");
     fprintf(OUT, "    inc    stack, 4\n");
     fprintf(OUT, "    mov    r5, (stack)\n");
+    fprintf(OUT, "    inc    stack, 4\n");
     fprintf(OUT, "    shl    r6, 2\n");
     fprintf(OUT, "    mov    (r6), r5\n");
 }
