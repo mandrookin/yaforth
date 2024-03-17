@@ -27,3 +27,6 @@ Type `./yaforth -a tests/hello.frt` to generate `test/hello.asm`.
 |-ansi         | enable ANSI colors                              |
 |-no-stdin     | close stdin, return EOF on getc()               |
 
+### Would you give feedback or ask question?
+
+Here is good place for communication - https://github.com/L4OS/yaforth/discussions
