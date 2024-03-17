@@ -34,10 +34,6 @@ extern int read_key();
 
 //#define TRACE true
 
-constexpr unsigned int hash(const char* s, int off = 0) {
-    return !s[off] ? 5381 : (hash(s, off + 1) * 33) ^ s[off];
-}
-
 static std::stack<word_t>           integer_stack;
 static std::stack<word_t>           return_stack;
 static std::stack<word_t>           condition_stack;

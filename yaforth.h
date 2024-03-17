@@ -24,7 +24,6 @@ typedef enum {
     variable
 } word_type_t;
 
-#endif
 
 typedef enum {
     neutral,
@@ -93,5 +92,9 @@ struct command_line_parameters {
     bool                                generate_assembler = false;
 };
 
+constexpr unsigned int hash(const char* s, int off = 0) {
+    return !s[off] ? 5381 : (hash(s, off + 1) * 33) ^ s[off];
+}
 
+#endif
 

@@ -437,14 +437,28 @@ void asm_drop(ram_memory* mem, struct word_record* rec)
 
 void asm_dot(ram_memory* mem, struct word_record* rec)
 {
+    label_idx += 3;
     // Check current base
+    uint32_t h = hash("base");
+    record_t* r = find_record(h);
+    fprintf(OUT, "    load    r6, %x\n", r->ADDR);
+    fprintf(OUT, "    mov     r0, (r6)\n");
+    fprintf(OUT, "    load    r6, 10\n");
+    fprintf(OUT, "    cmp     r6, r0\n");
+    fprintf(OUT, "    je      label_dec_%d\n", label_idx - 2);
 
+    fprintf(OUT, "    mov    r0, (stack)\n");
+    fprintf(OUT, "    call   _print_hex\n");
+    fprintf(OUT, "    load   r3, 32\n");
+    fprintf(OUT, "    jmp    leave_%d\n", label_idx - 1);
+
+    fprintf(OUT, "label_dec_%d:\n", label_idx - 2);
     // print decimal number
     fprintf(OUT, "    mov    r0, (stack)\n");
 
     fprintf(OUT, "    load   r3, 0x80000000\n");
     fprintf(OUT, "    and   r3, r0\n");
-    fprintf(OUT, "    je    label_print_%d\n", ++label_idx);
+    fprintf(OUT, "    je    label_print_%d\n", label_idx);
 
     fprintf(OUT, "    neg    r0\n");
     fprintf(OUT, "    mov    (stack), r0\n");
@@ -454,6 +468,8 @@ void asm_dot(ram_memory* mem, struct word_record* rec)
 
     fprintf(OUT, "label_print_%d:\n", label_idx);
     fprintf(OUT, "    call   _print_dec\n");
+
+    fprintf(OUT, "leave_%d:\n", label_idx - 1);
     fprintf(OUT, "    load   r3, 32\n");
     fprintf(OUT, "    call   _putchar\n");
     fprintf(OUT, "    inc    stack, 4\n");

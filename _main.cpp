@@ -44,11 +44,6 @@ static struct termios new_tio;
 
 static char prompt[80];
 
-constexpr unsigned int hash(const char* s, int off = 0) {
-    return !s[off] ? 5381 : (hash(s, off + 1) * 33) ^ s[off];
-}
-
-
 state_t init();
 void generate_asm_code(const char*);
 char* yaforth_gets(char* buff, int sz, FILE* fp);
@@ -290,10 +285,9 @@ int main(int argc, char* argv[])
                 {
                    state = read_stream(fp);
                 }
-//                catch(char const *exception)
                 catch(char const &exception)
                 {
-                   fprintf(stderr, "EXCEPRION: %s\n", &exception);
+                   fprintf(stderr, "EXCEPTION: %s\n", &exception);
                 }
                 fclose(fp);
                 stream_count++;
