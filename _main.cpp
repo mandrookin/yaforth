@@ -164,10 +164,18 @@ int read_key()
     return ch;
 }
 
-#ifdef USE_READLINE
+#ifndef _WIN32
 
 char * yaforth_gets(char * buff, int sz, FILE * fp)
 {
+    if (!isatty(fileno(fp))) {
+        char * ptr = fgets(buff, sz, fp);
+        if(!ptr)
+          buff[0] = 0;
+        return buff;
+    }
+
+#ifdef USE_READLINE
     static char *line_read = (char *)NULL;
     char  * line_ptr;
 
@@ -196,6 +204,11 @@ char * yaforth_gets(char * buff, int sz, FILE * fp)
     else {
         buff[0] = 0;
     }
+#else
+    char * ptr = fgets(buff, sz, fp);
+    if(!ptr)
+        buff[0] = 0;
+#endif
     return buff;
 }
 
@@ -205,6 +218,7 @@ char * yaforth_gets(char * buff, int sz, FILE * fp)
 {
     if(interactive)
         fprintf(stdout,"%s", prompt);
+
     if (!isatty(_fileno(fp))) {
         fgets(buff, sz, fp);
         return buff;
