@@ -867,7 +867,7 @@ state_t check_item(std::string& item, state_t state)
             else
             {
                 char ch = item[0];
-                if (ch < 0x80)
+                if (ch > 0)
                 {
                     if (isdigit(ch) || ch == '-') {
                         state = parse_number(item);
